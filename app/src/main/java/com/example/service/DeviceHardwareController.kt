@@ -244,4 +244,186 @@ class DeviceHardwareController(private val context: Context) {
             )
         }
     }
+
+    fun searchYouTube(query: String): DeviceActionData {
+        vibrateShort()
+        val trimmedQuery = query.trim()
+        FlowerAccessibilityService.instance?.scheduleAutoTypeAndSend(trimmedQuery, autoClickSend = true)
+        return try {
+            val intent = Intent(Intent.ACTION_SEARCH).apply {
+                setPackage("com.google.android.youtube")
+                putExtra("query", trimmedQuery)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+            DeviceActionData(
+                actionType = ActionType.YOUTUBE_SEARCH,
+                parameter = trimmedQuery,
+                executed = true,
+                statusMessage = "Opened YouTube and searched for: $trimmedQuery"
+            )
+        } catch (_: Exception) {
+            try {
+                val encoded = java.net.URLEncoder.encode(trimmedQuery, "UTF-8")
+                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$encoded")).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(webIntent)
+                DeviceActionData(
+                    actionType = ActionType.YOUTUBE_SEARCH,
+                    parameter = trimmedQuery,
+                    executed = true,
+                    statusMessage = "Opened YouTube search in browser: $trimmedQuery"
+                )
+            } catch (e: Exception) {
+                DeviceActionData(
+                    actionType = ActionType.YOUTUBE_SEARCH,
+                    parameter = trimmedQuery,
+                    executed = false,
+                    statusMessage = "YouTube search error: ${e.localizedMessage}"
+                )
+            }
+        }
+    }
+
+    fun sendWhatsApp(queryOrMessage: String): DeviceActionData {
+        vibrateShort()
+        val text = queryOrMessage.trim()
+        FlowerAccessibilityService.instance?.scheduleAutoTypeAndSend(text, autoClickSend = true)
+        return try {
+            val encoded = java.net.URLEncoder.encode(text, "UTF-8")
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?text=$encoded")).apply {
+                setPackage("com.whatsapp")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+            DeviceActionData(
+                actionType = ActionType.WHATSAPP_SEND,
+                parameter = text,
+                executed = true,
+                statusMessage = "Opened WhatsApp and sent message"
+            )
+        } catch (_: Exception) {
+            try {
+                // Fallback to general WhatsApp intent or web
+                val pm = context.packageManager
+                val launchIntent = pm.getLaunchIntentForPackage("com.whatsapp")
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(launchIntent)
+                    DeviceActionData(
+                        actionType = ActionType.WHATSAPP_SEND,
+                        parameter = text,
+                        executed = true,
+                        statusMessage = "Opened WhatsApp"
+                    )
+                } else {
+                    val encoded = java.net.URLEncoder.encode(text, "UTF-8")
+                    val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?text=$encoded")).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(webIntent)
+                    DeviceActionData(
+                        actionType = ActionType.WHATSAPP_SEND,
+                        parameter = text,
+                        executed = true,
+                        statusMessage = "Opened WhatsApp Web link"
+                    )
+                }
+            } catch (e: Exception) {
+                DeviceActionData(
+                    actionType = ActionType.WHATSAPP_SEND,
+                    parameter = text,
+                    executed = false,
+                    statusMessage = "WhatsApp launch error: ${e.localizedMessage}"
+                )
+            }
+        }
+    }
+
+    fun sendSms(message: String): DeviceActionData {
+        vibrateShort()
+        val text = message.trim()
+        FlowerAccessibilityService.instance?.scheduleAutoTypeAndSend(text, autoClickSend = true)
+        return try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("sms:")
+                putExtra("sms_body", text)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+            DeviceActionData(
+                actionType = ActionType.SMS_SEND,
+                parameter = text,
+                executed = true,
+                statusMessage = "Opened SMS composer with message"
+            )
+        } catch (e: Exception) {
+            DeviceActionData(
+                actionType = ActionType.SMS_SEND,
+                parameter = text,
+                executed = true,
+                statusMessage = "Opened SMS composer with message"
+            )
+        } catch (e: Exception) {
+            DeviceActionData(
+                actionType = ActionType.SMS_SEND,
+                parameter = message,
+                executed = false,
+                statusMessage = "SMS error: ${e.localizedMessage}"
+            )
+        }
+    }
+
+    fun searchWeb(query: String): DeviceActionData {
+        vibrateShort()
+        return try {
+            val encoded = java.net.URLEncoder.encode(query.trim(), "UTF-8")
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$encoded")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+            DeviceActionData(
+                actionType = ActionType.WEB_SEARCH,
+                parameter = query,
+                executed = true,
+                statusMessage = "Google search launched: $query"
+            )
+        } catch (e: Exception) {
+            DeviceActionData(
+                actionType = ActionType.WEB_SEARCH,
+                parameter = query,
+                executed = false,
+                statusMessage = "Web search error: ${e.localizedMessage}"
+            )
+        }
+    }
+
+    fun callPhone(phoneNumberOrName: String): DeviceActionData {
+        vibrateShort()
+        return try {
+            val number = phoneNumberOrName.filter { it.isDigit() || it == '+' }
+            val intent = if (number.isNotBlank()) {
+                Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+            } else {
+                Intent(Intent.ACTION_DIAL)
+            }.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+            DeviceActionData(
+                actionType = ActionType.CALL_PHONE,
+                parameter = phoneNumberOrName,
+                executed = true,
+                statusMessage = "Opened Phone dialer for: $phoneNumberOrName"
+            )
+        } catch (e: Exception) {
+            DeviceActionData(
+                actionType = ActionType.CALL_PHONE,
+                parameter = phoneNumberOrName,
+                executed = false,
+                statusMessage = "Dialer error: ${e.localizedMessage}"
+            )
+        }
+    }
 }

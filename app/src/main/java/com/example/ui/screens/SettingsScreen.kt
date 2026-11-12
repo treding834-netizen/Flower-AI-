@@ -1,7 +1,8 @@
 package com.example.ui.screens
 
-import android.app.Activity
-import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,15 +28,21 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Cast
-import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PermMedia
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -57,11 +65,14 @@ import com.example.ui.theme.AnimeCardBorder
 import com.example.ui.theme.AnimeCyan
 import com.example.ui.theme.AnimeMagenta
 import com.example.ui.theme.AnimePinkGlow
+import com.example.ui.theme.AnimePinkLight
+import com.example.ui.theme.AnimePinkPrimary
 import com.example.ui.theme.AnimePurpleLight
 import com.example.ui.theme.AnimePurplePrimary
 import com.example.ui.theme.AnimeRedEnd
 import com.example.ui.theme.AnimeSurface
 import com.example.ui.theme.AnimeSurfaceVariant
+import com.example.ui.theme.RainbowColorSpectrum
 import com.example.ui.theme.TextDimmed
 import com.example.ui.theme.TextMutedLilac
 import com.example.ui.theme.TextPureWhite
@@ -73,13 +84,20 @@ fun SettingsScreen(
     isFlashlightOn: Boolean,
     onOpenApiKeyDialog: () -> Unit,
     onOpenMemoryVault: () -> Unit,
+    onOpenAiModeDialog: () -> Unit,
+    onClearHistory: () -> Unit,
     onCyclePersonality: () -> Unit,
     onToggleFlashlight: () -> Unit,
     onAdjustVolume: (Boolean) -> Unit,
     onTestFemaleVoice: () -> Unit,
+    onOpenVoiceSelection: () -> Unit,
+    onOpenThemeSelection: () -> Unit,
+    onOpenVoiceKeyboard: () -> Unit,
+    onOpenVoiceRooms: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val rainbowBrush = Brush.sweepGradient(colors = RainbowColorSpectrum)
 
     Box(
         modifier = modifier
@@ -94,161 +112,71 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
-            // Action Card 1: Join community
+            // Top Title Card
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .clickable {
-                        Toast.makeText(context, "Community hub ready", Toast.LENGTH_SHORT).show()
-                    },
+                    .border(1.5.dp, rainbowBrush, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                color = AnimeSurface.copy(alpha = 0.90f),
-                border = androidx.compose.foundation.BorderStroke(1.2.dp, AnimePurplePrimary)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = null,
-                            tint = AnimeMagenta,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Text(
-                            text = "Join community",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = AnimePurpleLight
-                        )
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = AnimePurpleLight,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Action Card 2: Watch the setup video
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onOpenApiKeyDialog),
-                shape = RoundedCornerShape(20.dp),
-                color = AnimeSurface.copy(alpha = 0.90f),
-                border = androidx.compose.foundation.BorderStroke(1.2.dp, AnimePinkGlow.copy(alpha = 0.6f))
+                color = AnimeSurface.copy(alpha = 0.95f)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                        .padding(18.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(46.dp)
-                                .clip(CircleShape)
-                                .background(AnimeRedEnd),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(14.dp))
-
-                        Column {
-                            Text(
-                                text = "Watch the setup video",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
-                                ),
-                                color = TextPureWhite
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "API keys, permissions and Accessibility, step by step",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = TextMutedLilac
-                            )
-                        }
+                    Column {
+                        Text(
+                            text = "⚙️ AJIJUL AI SETTINGS",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = TextPureWhite
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Developer: Md. Ajijul Haque",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AnimePinkPrimary
+                        )
                     }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = TextDimmed,
-                        modifier = Modifier.size(22.dp)
-                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // SECTION 1: ✨ AI SETTINGS
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "✨  AI SETTINGS",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        fontSize = 13.sp
-                    ),
-                    color = TextPureWhite
-                )
-
-                Text(
-                    text = "Configure your AI assistant",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                    color = TextDimmed
-                )
-            }
+            // SECTION 1: 🔐 AI & VOICE CONFIGURATION
+            Text(
+                text = "🔐 AI & VOICE CONFIGURATION",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    fontSize = 13.sp
+                ),
+                color = TextPureWhite
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, rainbowBrush, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                color = AnimeSurface.copy(alpha = 0.90f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, AnimeCardBorder)
+                color = AnimeSurface.copy(alpha = 0.90f)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsRowItem(
                         icon = Icons.Default.Key,
-                        iconBg = AnimePurplePrimary,
-                        title = "Connections",
-                        subtitle = "Gemini and Groq keys",
-                        badge = if (apiKey.isNotBlank() && apiKey != "MY_GEMINI_API_KEY") "Ready" else "Set Key",
-                        badgeColor = AnimeCyan,
-                        onClick = onOpenApiKeyDialog,
-                        modifier = Modifier.testTag("settings_connections_item")
+                        iconBg = AnimePinkPrimary,
+                        title = "Gemini API Key Setup",
+                        subtitle = "Enter & secure your free API key",
+                        badge = if (apiKey.isNotBlank() && apiKey != "MY_GEMINI_API_KEY") "Configured" else "Set Key",
+                        badgeColor = AnimePinkPrimary,
+                        onClick = onOpenApiKeyDialog
                     )
 
                     SettingsDivider()
@@ -256,138 +184,218 @@ fun SettingsScreen(
                     SettingsRowItem(
                         icon = Icons.Default.RecordVoiceOver,
                         iconBg = AnimePinkGlow,
-                        title = "Sweet Female Voice Engine (মেয়েদের মিষ্টি কণ্ঠ)",
-                        subtitle = "Sweet Female AI formant · 1.34x pitch · Warm tone",
-                        badge = "Test",
+                        title = "Voice Select (3D Voice Engine)",
+                        subtitle = "Choose sweet female voice (5 options)",
+                        badge = "Select",
                         badgeColor = AnimeCyan,
-                        onClick = onTestFemaleVoice
+                        onClick = onOpenVoiceSelection
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.Star,
+                        iconBg = AnimeMagenta,
+                        title = "AI Mode (GF, BF, Doctor, Tutor)",
+                        subtitle = "Current: ${activePersonality.title}",
+                        badge = "Change",
+                        badgeColor = AnimeMagenta,
+                        onClick = onOpenAiModeDialog
                     )
 
                     SettingsDivider()
 
                     SettingsRowItem(
                         icon = Icons.AutoMirrored.Filled.Chat,
-                        iconBg = AnimePinkGlow,
-                        title = "Chats & memory",
+                        iconBg = AnimePurpleLight,
+                        title = "Chats & Memory Vault",
                         subtitle = "Learned memories & preferences",
-                        onClick = onOpenMemoryVault,
-                        modifier = Modifier.testTag("settings_memories_item")
+                        onClick = onOpenMemoryVault
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
-            // SECTION 2: ⚙️ APP SETTINGS
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "⚙️  APP SETTINGS",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        fontSize = 13.sp
-                    ),
-                    color = TextPureWhite
-                )
-
-                Text(
-                    text = "Appearance and behavior",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                    color = TextDimmed
-                )
-            }
+            // SECTION 2: 🛡️ DEVICE PERMISSIONS & ACCESS CONTROL (Accessibility, Notification, Overlays, Location, Gallery, Contacts, Microphone)
+            Text(
+                text = "🛡️ DEVICE PERMISSIONS & ACCESS CONTROL",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    fontSize = 13.sp
+                ),
+                color = TextPureWhite
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, rainbowBrush, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                color = AnimeSurface.copy(alpha = 0.90f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, AnimeCardBorder)
+                color = AnimeSurface.copy(alpha = 0.90f)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsRowItem(
-                        icon = Icons.Default.Palette,
-                        iconBg = AnimeMagenta,
-                        title = "Look & feel",
-                        subtitle = "${activePersonality.title} · Neon ring orb",
-                        onClick = onCyclePersonality
-                    )
-
-                    SettingsDivider()
-
-                    SettingsRowItem(
-                        icon = Icons.Default.Keyboard,
-                        iconBg = AnimePurplePrimary,
-                        title = "Voice keyboard",
-                        subtitle = "Speak to type in any app",
-                        badge = "Turn on",
-                        badgeColor = AnimePurpleLight,
-                        onClick = {
-                            Toast.makeText(context, "Voice keyboard input enabled", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-
-                    SettingsDivider()
-
-                    SettingsRowItem(
-                        icon = Icons.Default.Cast,
-                        iconBg = AnimeCyan,
-                        title = "Broadcast & Voice Rooms",
-                        subtitle = "Create rooms and talk with friends live",
-                        onClick = {
-                            Toast.makeText(context, "Voice Rooms connected", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-
-                    SettingsDivider()
-
-                    SettingsRowItem(
                         icon = Icons.Default.Security,
-                        iconBg = AnimePurpleLight,
-                        title = "Phone control",
-                        subtitle = "Quick actions and permissions: Flashlight (${if (isFlashlightOn) "ON" else "OFF"}), Volume",
-                        onClick = onToggleFlashlight
+                        iconBg = AnimeCyan,
+                        title = "1. Accessibility Service (অ্যাক্সেসিবিলিটি)",
+                        subtitle = "Enable automated control & screen observation",
+                        badge = "Grant",
+                        badgeColor = AnimeCyan,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Open Accessibility settings manually", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.Notifications,
+                        iconBg = AnimePinkPrimary,
+                        title = "2. Notifications (নোটিফিকেশন)",
+                        subtitle = "Allow persistent background voice notifications",
+                        badge = "Grant",
+                        badgeColor = AnimePinkPrimary,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                })
+                            } catch (_: Exception) {}
+                        }
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.Visibility,
+                        iconBg = AnimeMagenta,
+                        title = "3. Display Over Other Apps (অ্যাপ ওভার দ্য অ্যাপ)",
+                        subtitle = "Allow floating voice overlay windows",
+                        badge = "Grant",
+                        badgeColor = AnimeMagenta,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
+                            } catch (_: Exception) {}
+                        }
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.LocationOn,
+                        iconBg = AnimeRedEnd,
+                        title = "4. Location Permission (লোকেশন)",
+                        subtitle = "Allow location queries and navigation",
+                        badge = "Grant",
+                        badgeColor = AnimeRedEnd,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                            } catch (_: Exception) {}
+                        }
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.PermMedia,
+                        iconBg = AnimePurplePrimary,
+                        title = "5. Gallery / Storage (গ্যালারি)",
+                        subtitle = "Allow photo selection & AI vision analysis",
+                        badge = "Grant",
+                        badgeColor = AnimePurplePrimary,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                            } catch (_: Exception) {}
+                        }
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.People,
+                        iconBg = AnimeCyan,
+                        title = "6. Contacts Access (কন্টাক্টস)",
+                        subtitle = "Allow finding and messaging contacts",
+                        badge = "Grant",
+                        badgeColor = AnimeCyan,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                            } catch (_: Exception) {}
+                        }
+                    )
+
+                    SettingsDivider()
+
+                    SettingsRowItem(
+                        icon = Icons.Default.Mic,
+                        iconBg = AnimePinkGlow,
+                        title = "7. Microphone Access (মাইক্রোফোন)",
+                        subtitle = "Allow voice input and hands-free calling",
+                        badge = "Grant",
+                        badgeColor = AnimePinkGlow,
+                        onClick = {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                            } catch (_: Exception) {}
+                        }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
-            // SECTION 3: ℹ️ ABOUT
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "ℹ️  ABOUT",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        fontSize = 13.sp
-                    ),
-                    color = TextPureWhite
-                )
-
-                Text(
-                    text = "App information and support",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                    color = TextDimmed
-                )
-            }
+            // SECTION 3: 🕒 HISTORY SETTINGS
+            Text(
+                text = "🕒 HISTORY SETTINGS",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    fontSize = 13.sp
+                ),
+                color = TextPureWhite
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, rainbowBrush, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                color = AnimeSurface.copy(alpha = 0.90f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, AnimeCardBorder)
+                color = AnimeSurface.copy(alpha = 0.90f)
+            ) {
+                SettingsRowItem(
+                    icon = Icons.Default.Delete,
+                    iconBg = AnimeRedEnd,
+                    title = "Clear Conversation History",
+                    subtitle = "Delete all stored chat & voice history",
+                    badge = "Clear",
+                    badgeColor = AnimeRedEnd,
+                    onClick = onClearHistory
+                )
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            // SECTION 4: ℹ️ ABOUT
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, rainbowBrush, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                color = AnimeSurface.copy(alpha = 0.90f)
             ) {
                 Column(
                     modifier = Modifier
@@ -395,7 +403,7 @@ fun SettingsScreen(
                         .padding(18.dp)
                 ) {
                     Text(
-                        text = "FLOWER AI v2.5",
+                        text = "AJIJUL AI v3.0",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPureWhite
@@ -403,15 +411,15 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Creator & Master Engineer: Md Ajijul Haque",
+                        text = "Lead Developer & Architect: Md. Ajijul Haque",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = AnimePurpleLight,
+                            color = AnimePinkPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Advanced multimodal companion powered by Gemini intelligence, voice synthesis, hardware telemetry and dynamic personas.",
+                        text = "Advanced multimodal AI assistant with 3D anime UI, speech engine, device control, and multiple AI personas.",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                         color = TextDimmed
                     )
@@ -468,7 +476,7 @@ private fun SettingsRowItem(
                     text = title,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 14.sp
                     ),
                     color = TextPureWhite
                 )
@@ -519,5 +527,5 @@ private fun SettingsDivider() {
             .fillMaxWidth()
             .height(0.5.dp)
             .background(AnimeCardBorder)
-    )
+        )
 }

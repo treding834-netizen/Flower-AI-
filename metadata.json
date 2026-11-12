@@ -1,6 +1,6 @@
 {
-  "name": "Flower AI",
-  "description": "Advanced personal AI assistant with dynamic personas, native device hardware controls, voice and vision intelligence.",
+  "name": "Ajijul AI",
+  "description": "Advanced personal AI assistant developed by Md. Ajijul Haque with dynamic personas, native device hardware controls, voice and vision intelligence.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

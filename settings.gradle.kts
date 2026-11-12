@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Flower AI"
+rootProject.name = "Ajijul AI"
 
 include(":app")

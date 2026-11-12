@@ -242,7 +242,7 @@ fun LiveVoiceCallingScreen(
                         )
                     }
 
-                    // Center Mic Icon
+                    // Center Mic Icon (Always active, no mic-off)
                     Box(
                         modifier = Modifier
                             .size(54.dp)
@@ -251,31 +251,22 @@ fun LiveVoiceCallingScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = when {
-                                isSpeaking -> Icons.Default.VolumeUp
-                                isListening -> Icons.Default.Mic
-                                else -> Icons.Default.MicOff
-                            },
-                            contentDescription = "Tap to speak",
-                            tint = when {
-                                isSpeaking -> AnimeMagenta
-                                isListening -> AnimeCyan
-                                else -> TextMutedLilac
-                            },
-                            modifier = Modifier.size(26.dp)
+                            imageVector = if (isSpeaking) Icons.Default.VolumeUp else Icons.Default.Mic,
+                            contentDescription = "Microphone",
+                            tint = if (isSpeaking) AnimePinkGlow else AnimeCyan,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 // Status Header Text
                 Text(
                     text = when {
                         isSpeaking -> "Flower is speaking..."
                         isGenerating -> "Flower is thinking..."
-                        isListening -> "Flower is listening..."
-                        else -> "Tap rings to talk"
+                        else -> "Flower is listening..."
                     },
                     style = MaterialTheme.typography.displayLarge.copy(
                         fontFamily = FontFamily.Serif,
@@ -285,15 +276,14 @@ fun LiveVoiceCallingScreen(
                         color = when {
                             isSpeaking -> AnimePinkGlow
                             isGenerating -> AnimeCyan
-                            isListening -> AnimeCyan
-                            else -> TextPureWhite
+                            else -> AnimeCyan
                         }
                     )
                 )
 
                 // User's Last Spoken Query
                 if (lastSpeechText.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "“$lastSpeechText”",
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -303,122 +293,14 @@ fun LiveVoiceCallingScreen(
                             textAlign = TextAlign.Center
                         ),
                         maxLines = 2,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Generating Loader or AI Assistant's Response Card
-                if (isGenerating) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.92f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(AnimeSurface.copy(alpha = 0.7f))
-                            .border(1.dp, AnimeCyan.copy(alpha = glowAlpha), RoundedCornerShape(16.dp))
-                            .padding(14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = AnimeCyan,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Flower AI উত্তর তৈরি করছে...",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Medium,
-                                    color = AnimeCyan
-                                )
-                            )
-                        }
-                    }
-                } else if (!latestAssistantResponse.isNullOrBlank()) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth(0.95f)
-                            .heightIn(max = 220.dp)
-                            .clip(RoundedCornerShape(18.dp)),
-                        color = AnimeSurface.copy(alpha = 0.88f),
-                        border = BorderStroke(1.dp, AnimePurplePrimary.copy(alpha = 0.5f))
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = AnimePinkGlow,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Flower AI (স্বয়ংক্রিয় ভয়েস উত্তর)",
-                                        style = MaterialTheme.typography.labelMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = AnimePinkGlow
-                                        )
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            Text(
-                                text = latestAssistantResponse,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 13.5.sp,
-                                    lineHeight = 19.sp,
-                                    color = TextPureWhite
-                                ),
-                                modifier = Modifier.verticalScroll(rememberScrollState())
-                            )
-                        }
-                    }
-                } else {
-                    Text(
-                        text = "Keeps listening if you leave this screen.",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.sp,
-                            color = TextMutedLilac
-                        )
+                        modifier = Modifier.padding(horizontal = 24.dp)
                     )
                 }
             }
 
-            // Quick Voice Suggestion Chips (Tap to send instantly via voice)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                QuickVoiceChip(label = "Hey Flower") { onQuickVoicePrompt("Hey Flower") }
-                QuickVoiceChip(label = "কেমন আছো?") { onQuickVoicePrompt("তুমি কেমন আছো?") }
-                QuickVoiceChip(label = "একটি কবিতা বলো") { onQuickVoicePrompt("আমাকে একটি সুন্দর রোমান্টিক কবিতা শোনাও") }
-                QuickVoiceChip(label = "তোমাকে ভালোবাসি") { onQuickVoicePrompt("আমি তোমাকে খুব ভালোবাসি") }
-                QuickVoiceChip(label = "ফ্ল্যাশলাইট জ্বালাও") { onQuickVoicePrompt("ফ্ল্যাশলাইট জ্বালাও") }
-                QuickVoiceChip(label = "ফ্ল্যাশলাইট বন্ধ করো") { onQuickVoicePrompt("ফ্ল্যাশলাইট বন্ধ করো") }
-                QuickVoiceChip(label = "ভলিউম বাড়াও") { onQuickVoicePrompt("ভলিউম বাড়াও") }
-            }
+            val rainbowBrush = Brush.sweepGradient(colors = com.example.ui.theme.RainbowColorSpectrum)
 
-            // Floating Bottom Call Control Pill (Mute, End, Minimize)
+            // Floating Bottom Call Control Pill (Mute, End, Minimize) with Rainbow Lighting
             Surface(
                 modifier = Modifier
                     .fillMaxWidth(0.94f)
@@ -426,7 +308,7 @@ fun LiveVoiceCallingScreen(
                     .padding(bottom = 6.dp),
                 shape = RoundedCornerShape(38.dp),
                 color = AnimeSurface.copy(alpha = 0.90f),
-                border = BorderStroke(1.dp, AnimePurplePrimary.copy(alpha = 0.35f))
+                border = BorderStroke(1.5.dp, rainbowBrush)
             ) {
                 Row(
                     modifier = Modifier
@@ -497,26 +379,4 @@ fun LiveVoiceCallingScreen(
     }
 }
 
-@Composable
-private fun QuickVoiceChip(
-    label: String,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(AnimeSurface.copy(alpha = 0.9f))
-            .border(1.dp, AnimePurplePrimary.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 11.5.sp,
-                color = AnimePurpleLight
-            )
-        )
-    }
-}
+

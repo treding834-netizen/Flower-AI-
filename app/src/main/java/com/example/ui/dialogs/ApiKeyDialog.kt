@@ -1,7 +1,10 @@
 package com.example.ui.dialogs
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -39,23 +43,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.ui.theme.CyberBackground
-import com.example.ui.theme.CyberCardBorder
-import com.example.ui.theme.CyberSurface
-import com.example.ui.theme.CyberSurfaceVariant
-import com.example.ui.theme.CyberVoid
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TextTertiary
+import com.example.ui.theme.AnimeCardBorder
+import com.example.ui.theme.AnimeDeepSpace
+import com.example.ui.theme.AnimePinkPrimary
+import com.example.ui.theme.AnimeSurface
+import com.example.ui.theme.AnimeSurfaceVariant
+import com.example.ui.theme.RainbowColorSpectrum
+import com.example.ui.theme.TextMutedLilac
+import com.example.ui.theme.TextPureWhite
 
 @Composable
 fun ApiKeyDialog(
@@ -66,19 +70,21 @@ fun ApiKeyDialog(
 ) {
     var apiKeyText by remember { mutableStateOf(initialApiKey) }
     var searchGrounding by remember { mutableStateOf(initialSearchGrounding) }
+    val context = LocalContext.current
+    val rainbowBrush = Brush.sweepGradient(colors = RainbowColorSpectrum)
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = CyberSurface,
+            shape = RoundedCornerShape(20.dp),
+            color = AnimeSurface,
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, NeonCyan.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                .border(2.dp, rainbowBrush, RoundedCornerShape(20.dp))
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp)
+                    .padding(20.dp)
             ) {
                 // Header
                 Row(
@@ -89,34 +95,33 @@ fun ApiKeyDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
-                                .background(NeonCyan.copy(alpha = 0.15f))
-                                .border(1.dp, NeonCyan, CircleShape),
+                                .background(AnimePinkPrimary.copy(alpha = 0.2f))
+                                .border(1.dp, AnimePinkPrimary, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Key,
                                 contentDescription = null,
-                                tint = NeonCyan,
-                                modifier = Modifier.size(18.dp)
+                                tint = AnimePinkPrimary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "GEMINI SECURITY VAULT",
+                                text = "AJIJUL AI API VAULT",
                                 style = MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
                                 ),
-                                color = TextPrimary
+                                color = TextPureWhite
                             )
                             Text(
-                                text = "Secure AI Connection",
+                                text = "Developer: Md. Ajijul Haque",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = NeonCyan
+                                color = AnimePinkPrimary
                             )
                         }
                     }
@@ -128,7 +133,7 @@ fun ApiKeyDialog(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = TextTertiary,
+                            tint = TextMutedLilac,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -136,29 +141,58 @@ fun ApiKeyDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Security Note
+                // Free Key Guide & Link Card (Google AI Studio / Reiko web)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(CyberVoid)
-                        .border(1.dp, CyberCardBorder, RoundedCornerShape(8.dp))
-                        .padding(10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AnimeDeepSpace)
+                        .border(1.dp, AnimeCardBorder, RoundedCornerShape(12.dp))
+                        .clickable {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        }
+                        .padding(12.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.Top) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = AnimePinkPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Get Free Gemini API Key (Google AI Studio)",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    ),
+                                    color = TextPureWhite
+                                )
+                                Text(
+                                    text = "Tap here to open free key portal in browser",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                    color = AnimePinkPrimary
+                                )
+                            }
+                        }
                         Icon(
-                            imageVector = Icons.Default.Lock,
+                            imageVector = Icons.Default.Launch,
                             contentDescription = null,
-                            tint = NeonGreen,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .padding(top = 2.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Connection is encrypted on-device. All voice commands and telemetry are handled securely.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                            color = TextSecondary
+                            tint = AnimePinkPrimary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -167,10 +201,9 @@ fun ApiKeyDialog(
 
                 // API Key Field
                 Text(
-                    text = "GEMINI API KEY",
+                    text = "ENTER YOUR GEMINI API KEY",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        color = NeonCyan,
+                        color = AnimePinkPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 )
@@ -178,18 +211,18 @@ fun ApiKeyDialog(
                 OutlinedTextField(
                     value = apiKeyText,
                     onValueChange = { apiKeyText = it },
-                    placeholder = { Text("Paste AI Studio Gemini Key...", color = TextTertiary) },
+                    placeholder = { Text("AIzaSy...", color = TextMutedLilac.copy(alpha = 0.5f)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("api_key_input_field"),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = CyberBackground,
-                        unfocusedContainerColor = CyberBackground,
-                        focusedBorderColor = NeonCyan,
-                        unfocusedBorderColor = CyberCardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedContainerColor = AnimeSurfaceVariant,
+                        unfocusedContainerColor = AnimeSurfaceVariant,
+                        focusedBorderColor = AnimePinkPrimary,
+                        unfocusedBorderColor = AnimeCardBorder,
+                        focusedTextColor = TextPureWhite,
+                        unfocusedTextColor = TextPureWhite
                     ),
                     singleLine = true
                 )
@@ -200,9 +233,9 @@ fun ApiKeyDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(CyberSurfaceVariant.copy(alpha = 0.5f))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(AnimeSurfaceVariant.copy(alpha = 0.6f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -213,10 +246,10 @@ fun ApiKeyDialog(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = NeonCyan,
-                            modifier = Modifier.size(16.dp)
+                            tint = AnimePinkPrimary,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
                                 text = "Google Search Grounding",
@@ -224,12 +257,12 @@ fun ApiKeyDialog(
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp
                                 ),
-                                color = TextPrimary
+                                color = TextPureWhite
                             )
                             Text(
-                                text = "Live web search for current events",
+                                text = "Live web search enabled",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TextSecondary
+                                color = TextMutedLilac
                             )
                         }
                     }
@@ -237,44 +270,51 @@ fun ApiKeyDialog(
                         checked = searchGrounding,
                         onCheckedChange = { searchGrounding = it },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = NeonCyan,
-                            checkedTrackColor = CyberVoid,
-                            uncheckedTrackColor = CyberBackground
+                            checkedThumbColor = AnimePinkPrimary,
+                            checkedTrackColor = AnimeDeepSpace,
+                            uncheckedTrackColor = AnimeDeepSpace
                         ),
                         modifier = Modifier.testTag("search_grounding_switch")
                     )
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Save Button
-                Button(
-                    onClick = {
-                        onSave(apiKeyText.trim(), searchGrounding)
-                    },
+                // Save Button with 3D Rainbow Border
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
-                        .testTag("save_api_key_button"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = NeonCyan,
-                        contentColor = CyberVoid
-                    )
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(rainbowBrush)
+                        .padding(1.8.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(AnimePinkPrimary)
+                        .clickable {
+                            onSave(apiKeyText.trim(), searchGrounding)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "SECURE & INITIALIZE FLOWER AI",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = TextPureWhite,
+                            modifier = Modifier.size(18.dp)
                         )
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "CONFIRM & ENTER AJIJUL AI",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = TextPureWhite
+                        )
+                    }
                 }
             }
         }

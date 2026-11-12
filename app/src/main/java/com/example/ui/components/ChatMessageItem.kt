@@ -443,8 +443,9 @@ fun DeviceActionHUDCard(
         ActionType.FLASHLIGHT_ON, ActionType.FLASHLIGHT_OFF -> Icons.Default.FlashlightOn
         ActionType.VOLUME_UP, ActionType.VOLUME_DOWN -> Icons.Default.VolumeUp
         ActionType.BRIGHTNESS_UP, ActionType.BRIGHTNESS_DOWN -> Icons.Default.BrightnessMedium
-        ActionType.OPEN_APP -> Icons.Default.Apps
-        ActionType.TYPE_TEXT -> Icons.Default.Code
+        ActionType.OPEN_APP, ActionType.YOUTUBE_SEARCH, ActionType.WEB_SEARCH -> Icons.Default.Apps
+        ActionType.TYPE_TEXT, ActionType.WHATSAPP_SEND, ActionType.SMS_SEND, ActionType.CALL_PHONE -> Icons.Default.Code
+        else -> Icons.Default.Apps
     }
 
     Box(

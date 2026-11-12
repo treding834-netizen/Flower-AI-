@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">Flower AI</string>
+    <string name="app_name">Ajijul AI</string>
+    <string name="accessibility_service_desc">Ajijul AI Accessibility Service for screen observation, automated phone control, gestures, and smart assistant actions by Md. Ajijul Haque.</string>
 </resources>

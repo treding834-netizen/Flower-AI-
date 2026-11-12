@@ -26,10 +26,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.core.content.ContextCompat
 import com.example.model.NavigationTab
 import com.example.ui.components.AnimeBottomNavBar
+import com.example.ui.dialogs.AiModeSelectionDialog
 import com.example.ui.dialogs.ApiKeyDialog
 import com.example.ui.dialogs.ImageGenerationDialog
 import com.example.ui.dialogs.MemoryVaultDialog
+import com.example.ui.dialogs.ThemeSelectionDialog
 import com.example.ui.dialogs.VoiceInputDialog
+import com.example.ui.dialogs.VoiceKeyboardDialog
+import com.example.ui.dialogs.VoiceRoomsDialog
+import com.example.ui.dialogs.VoiceSelectionDialog
 import com.example.ui.dialogs.WebsitePreviewDialog
 import com.example.ui.screens.ChatScreen
 import com.example.ui.screens.HistoryScreen
@@ -47,14 +52,31 @@ fun FlowerAiScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Audio record permission launcher
-    val audioPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+    // Multi-permission launcher for Record Audio & Post Notifications
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isAudioGranted = permissions[Manifest.permission.RECORD_AUDIO] == true
+        if (isAudioGranted) {
             viewModel.setLiveVoiceCalling(true)
         } else {
             Toast.makeText(context, "Microphone permission is required for voice calling", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Auto-request microphone & notification permissions on first launch
+    LaunchedEffect(Unit) {
+        val hasAudioPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasAudioPermission) {
+            val permissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            permissionsLauncher.launch(permissions.toTypedArray())
         }
     }
 
@@ -125,7 +147,7 @@ fun FlowerAiScreen(
                         if (hasAudioPermission) {
                             viewModel.setLiveVoiceCalling(true)
                         } else {
-                            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            permissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                         }
                     },
                     isVoiceActive = uiState.isListening || uiState.isSpeaking
@@ -144,12 +166,20 @@ fun FlowerAiScreen(
                     when (tab) {
                         NavigationTab.HOME -> {
                             HomeScreen(
+                                apiKey = uiState.apiKey,
                                 activePersonality = uiState.activePersonality,
                                 isFlashlightOn = uiState.isFlashlightOn,
+                                isAsleep = uiState.isAsleep,
+                                isListening = uiState.isListening,
+                                isSpeaking = uiState.isSpeaking,
+                                lastRecognizedText = uiState.lastRecognizedText,
+                                activePalette = uiState.activePalette,
                                 onSelectPersonality = { mode -> viewModel.setPersonality(mode) },
+                                onSelectPalette = { palette -> viewModel.setThemePalette(palette) },
                                 onToggleFlashlight = { viewModel.toggleFlashlight() },
                                 onAdjustVolume = { raise -> viewModel.adjustVolume(raise) },
                                 onOpenApiKeyDialog = { viewModel.setShowApiKeyDialog(true) },
+                                onOpenAiModeDialog = { viewModel.setShowAiModeDialog(true) },
                                 onOpenMemoryVault = { viewModel.setShowMemoryVaultDialog(true) },
                                 onNavigateTab = { targetTab -> viewModel.setTab(targetTab) },
                                 onStartVoiceCall = {
@@ -160,7 +190,7 @@ fun FlowerAiScreen(
                                     if (hasAudioPermission) {
                                         viewModel.setLiveVoiceCalling(true)
                                     } else {
-                                        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        permissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                                     }
                                 },
                                 onTriggerVoiceAction = { prompt ->
@@ -169,7 +199,7 @@ fun FlowerAiScreen(
                                         Manifest.permission.RECORD_AUDIO
                                     ) == PackageManager.PERMISSION_GRANTED
                                     if (!hasAudioPermission) {
-                                        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        permissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                                     }
                                     viewModel.setLiveVoiceCalling(true)
                                     viewModel.handleUserInput(prompt)
@@ -194,7 +224,7 @@ fun FlowerAiScreen(
                                     if (hasAudioPermission) {
                                         viewModel.setLiveVoiceCalling(true)
                                     } else {
-                                        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        permissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
                                     }
                                 },
                                 onBackToHome = { viewModel.setTab(NavigationTab.HOME) },
@@ -217,10 +247,16 @@ fun FlowerAiScreen(
                                 isFlashlightOn = uiState.isFlashlightOn,
                                 onOpenApiKeyDialog = { viewModel.setShowApiKeyDialog(true) },
                                 onOpenMemoryVault = { viewModel.setShowMemoryVaultDialog(true) },
+                                onOpenAiModeDialog = { viewModel.setShowAiModeDialog(true) },
+                                onClearHistory = { viewModel.clearHistory() },
                                 onCyclePersonality = { viewModel.cyclePersonality() },
                                 onToggleFlashlight = { viewModel.toggleFlashlight() },
                                 onAdjustVolume = { raise -> viewModel.adjustVolume(raise) },
-                                onTestFemaleVoice = { viewModel.testFemaleVoice() }
+                                onTestFemaleVoice = { viewModel.testFemaleVoice() },
+                                onOpenVoiceSelection = { viewModel.setShowVoiceSelectionDialog(true) },
+                                onOpenThemeSelection = { viewModel.setShowThemeSelectionDialog(true) },
+                                onOpenVoiceKeyboard = { viewModel.setShowVoiceKeyboardDialog(true) },
+                                onOpenVoiceRooms = { viewModel.setShowVoiceRoomsDialog(true) }
                             )
                         }
                     }
@@ -276,6 +312,44 @@ fun FlowerAiScreen(
             onSubmitVoice = { voiceText ->
                 viewModel.handleUserInput(voiceText)
             }
+        )
+    }
+
+    if (uiState.showThemeSelectionDialog) {
+        ThemeSelectionDialog(
+            currentPersonality = uiState.activePersonality,
+            activePalette = uiState.activePalette,
+            onSelectPersonality = { mode -> viewModel.setPersonality(mode) },
+            onSelectPalette = { palette -> viewModel.setThemePalette(palette) },
+            onDismiss = { viewModel.setShowThemeSelectionDialog(false) }
+        )
+    }
+
+    if (uiState.showVoiceKeyboardDialog) {
+        VoiceKeyboardDialog(
+            onDismiss = { viewModel.setShowVoiceKeyboardDialog(false) },
+            onTestVoiceKeyboard = { viewModel.testFemaleVoice() }
+        )
+    }
+
+    if (uiState.showVoiceSelectionDialog) {
+        VoiceSelectionDialog(
+            selectedVoiceId = uiState.selectedVoiceId,
+            onSelectVoice = { voice ->
+                viewModel.setSelectedVoice(voice.id, voice.pitch, voice.rate)
+            },
+            onTestVoice = { voice ->
+                viewModel.testVoiceSample(voice.name, voice.pitch, voice.rate)
+            },
+            onDismiss = { viewModel.setShowVoiceSelectionDialog(false) }
+        )
+    }
+
+    if (uiState.showAiModeDialog) {
+        AiModeSelectionDialog(
+            currentMode = uiState.activePersonality,
+            onSelectMode = { mode -> viewModel.setPersonality(mode) },
+            onDismiss = { viewModel.setShowAiModeDialog(false) }
         )
     }
 }

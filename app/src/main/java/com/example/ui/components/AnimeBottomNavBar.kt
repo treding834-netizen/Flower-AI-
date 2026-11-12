@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -50,13 +51,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.NavigationTab
 import com.example.ui.theme.AnimeAmber
-import com.example.ui.theme.AnimeCyan
-import com.example.ui.theme.AnimeMagenta
-import com.example.ui.theme.AnimePurplePrimary
+import com.example.ui.theme.AnimePinkGlow
+import com.example.ui.theme.AnimePinkLight
+import com.example.ui.theme.AnimePinkPrimary
 import com.example.ui.theme.BottomNavPillBackground
-import com.example.ui.theme.BottomNavPillBorder
+import com.example.ui.theme.RainbowColorSpectrum
 import com.example.ui.theme.TextDimmed
-import com.example.ui.theme.TextMutedLilac
 
 @Composable
 fun AnimeBottomNavBar(
@@ -77,26 +77,39 @@ fun AnimeBottomNavBar(
         label = "pulse"
     )
 
+    val rainbowAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rainbow_rotate"
+    )
+
+    val rainbowBrush = Brush.sweepGradient(colors = RainbowColorSpectrum)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Floating pill container
+        // Floating pill container with Rainbow Border Lighting
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(68.dp),
+                .height(68.dp)
+                .clip(RoundedCornerShape(34.dp))
+                .border(1.5.dp, rainbowBrush, RoundedCornerShape(34.dp)),
             shape = RoundedCornerShape(34.dp),
-            color = BottomNavPillBackground.copy(alpha = 0.96f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, BottomNavPillBorder)
+            color = BottomNavPillBackground.copy(alpha = 0.96f)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -119,7 +132,7 @@ fun AnimeBottomNavBar(
                 )
 
                 // Space for Center Floating Orb
-                Spacer(modifier = Modifier.width(56.dp))
+                Spacer(modifier = Modifier.width(58.dp))
 
                 // History Tab
                 NavTabItem(
@@ -141,18 +154,14 @@ fun AnimeBottomNavBar(
             }
         }
 
-        // Center Floating Raised Voice Orb
+        // Center Floating Raised Voice Orb with RGB Rainbow Lighting
         Box(
             modifier = Modifier
-                .offset(y = (-14).dp)
-                .size(66.dp)
+                .offset(y = (-16).dp)
+                .size(68.dp)
                 .scale(if (isVoiceActive) pulseScale else 1f)
                 .clip(CircleShape)
-                .background(
-                    Brush.sweepGradient(
-                        listOf(AnimeCyan, AnimeMagenta, AnimePurplePrimary, AnimeCyan)
-                    )
-                )
+                .background(rainbowBrush)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -167,17 +176,17 @@ fun AnimeBottomNavBar(
                     .fillMaxWidth()
                     .clip(CircleShape)
                     .background(BottomNavPillBackground)
-                    .border(2.dp, AnimeMagenta, CircleShape),
+                    .border(1.5.dp, AnimePinkPrimary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                // Inner concentric glowing ring
+                // Inner concentric glowing 3D pink ring
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.radialGradient(
-                                listOf(AnimeMagenta.copy(alpha = 0.85f), AnimePurplePrimary.copy(alpha = 0.5f))
+                                listOf(AnimePinkPrimary.copy(alpha = 0.95f), Color(0xFF4A0A35))
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -186,7 +195,7 @@ fun AnimeBottomNavBar(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Voice Call",
                         tint = Color.White,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -202,43 +211,49 @@ private fun NavTabItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    val rainbowBrush = Brush.sweepGradient(colors = RainbowColorSpectrum)
+
+    Box(
         modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .then(
+                if (isSelected) {
+                    Modifier
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(AnimePinkPrimary.copy(alpha = 0.22f), Color.Transparent)
+                            )
+                        )
+                        .border(1.2.dp, rainbowBrush, RoundedCornerShape(20.dp))
+                } else Modifier
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick
             )
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isSelected) AnimeAmber else TextDimmed,
-            modifier = Modifier.size(22.dp)
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                fontSize = 11.sp
-            ),
-            color = if (isSelected) AnimeAmber else TextDimmed
-        )
-        if (isSelected) {
-            Spacer(modifier = Modifier.height(3.dp))
-            Box(
-                modifier = Modifier
-                    .width(16.dp)
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(AnimeAmber)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected) AnimePinkPrimary else TextDimmed,
+                modifier = Modifier.size(22.dp)
             )
-        } else {
-            Spacer(modifier = Modifier.height(5.dp))
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 11.sp
+                ),
+                color = if (isSelected) AnimePinkLight else TextDimmed
+            )
         }
     }
 }

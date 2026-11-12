@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 import com.example.model.NavigationTab
+import com.example.ui.theme.AppThemePalette
 
 data class FlowerAiUiState(
     val currentTab: NavigationTab = NavigationTab.HOME,
@@ -36,6 +37,7 @@ data class FlowerAiUiState(
     val lastRecognizedText: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val activePersonality: PersonalityMode = PersonalityMode.ROMANTIC_PARTNER,
+    val activePalette: AppThemePalette = AppThemePalette.NEON_PINK,
     val isListening: Boolean = false,
     val isSpeaking: Boolean = false,
     val audioRms: Float = 0f,
@@ -53,6 +55,13 @@ data class FlowerAiUiState(
     val showImageGenDialog: Boolean = false,
     val showMemoryVaultDialog: Boolean = false,
     val showVoiceInputDialog: Boolean = false,
+    val showThemeSelectionDialog: Boolean = false,
+    val showVoiceKeyboardDialog: Boolean = false,
+    val showVoiceRoomsDialog: Boolean = false,
+    val showVoiceSelectionDialog: Boolean = false,
+    val selectedVoiceId: String = "f1",
+    val isAsleep: Boolean = false,
+    val showAiModeDialog: Boolean = false,
     val statusNotification: String? = null
 )
 
@@ -67,17 +76,8 @@ class FlowerAiViewModel(application: Application) : AndroidViewModel(application
     val uiState: StateFlow<FlowerAiUiState> = _uiState.asStateFlow()
 
     init {
-        // Resolve API key from Preferences, or BuildConfig fallback
+        // Resolve API key strictly from user preference (manual entry only)
         var key = preferences.getApiKey()
-        if (key.isBlank() || key == "MY_GEMINI_API_KEY") {
-            try {
-                val buildConfigKey = BuildConfig.GEMINI_API_KEY
-                if (buildConfigKey.isNotBlank() && buildConfigKey != "MY_GEMINI_API_KEY") {
-                    key = buildConfigKey
-                    preferences.setApiKey(key)
-                }
-            } catch (_: Exception) {}
-        }
 
         val persona = preferences.getPersonality()
         val tts = preferences.isTtsEnabled()
@@ -88,17 +88,23 @@ class FlowerAiViewModel(application: Application) : AndroidViewModel(application
         val initialMessages = listOf(
             ChatMessage(
                 role = MessageRole.ASSISTANT,
-                text = "Hello, I am ready. I am Flower AI, your personal Jarvis-level companion and assistant. Creator Md Ajijul Haque recognized. How may I be of service to you today?",
+                text = "হ্যালো সোনা! আমি Flower AI। আমি তোমার একান্ত মিষ্টি মেয়ে সঙ্গী। তোমার সাথে কথা বলতে আমি সবসময় প্রস্তুত!",
                 isWakeWordGreeting = true
             )
         )
 
         val shouldShowKeyDialog = key.isBlank() || key == "MY_GEMINI_API_KEY"
 
+        val savedPaletteId = preferences.getThemePalette()
+        val palette = AppThemePalette.fromId(savedPaletteId)
+        val savedAsleep = preferences.isAsleep()
+
         _uiState.update {
             it.copy(
                 apiKey = key,
                 activePersonality = persona,
+                activePalette = palette,
+                isAsleep = savedAsleep,
                 isTtsEnabled = tts,
                 isSearchGroundingEnabled = search,
                 memories = memories,
@@ -146,9 +152,20 @@ class FlowerAiViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private var lastHandledInput: String = ""
+    private var lastHandledTime: Long = 0L
+    private var localResponseIndex: Int = 0
+
     fun handleUserInput(rawInput: String) {
         val input = rawInput.trim()
         if (input.isBlank()) return
+
+        val currentTime = System.currentTimeMillis()
+        if (input.equals(lastHandledInput, ignoreCase = true) && (currentTime - lastHandledTime) < 1800L) {
+            return // Prevent duplicate voice callback processing
+        }
+        lastHandledInput = input
+        lastHandledTime = currentTime
 
         val currentAttachedImageUri = _uiState.value.attachedImageUri
         val currentAttachedImageBase64 = _uiState.value.attachedImageBase64
@@ -172,20 +189,42 @@ class FlowerAiViewModel(application: Application) : AndroidViewModel(application
 
         val lower = input.lowercase()
 
-        // 1. Wake Word Detection ("Hey Flower", "Hello", "Hubuhu", "হ্যালো", "হাই")
-        if (lower == "hey flower" || lower == "hello" || lower == "hubuhu" ||
-            lower.startsWith("hey flower") || lower.startsWith("hubuhu") ||
-            lower == "হ্যালো" || lower == "হাই" || lower == "hi flower" || lower == "hi") {
-            val isBengali = input.any { it in '\u0980'..'\u09FF' }
-            val responseText = if (isBengali) "হ্যালো, আমি প্রস্তুত। ক্রিয়েটর মোঃ আজিজুল হককে সম্মান জানাই। কীভাবে সাহায্য করতে পারি?" else "Hello, I am ready."
-            val assistantMessage = ChatMessage(
-                role = MessageRole.ASSISTANT,
-                text = responseText,
-                isWakeWordGreeting = true
-            )
+        val isWakeTrigger = lower.contains("wake up flower") || lower.contains("flower ai jago") ||
+                lower.contains("jago") || lower.contains("জাগো") || lower.contains("ওঠো") ||
+                lower.contains("জেগে ওঠো") || lower.contains("ফ্লাওয়ার জাগো") || lower.contains("জাগো ফ্লাওয়ার") ||
+                lower.contains("hey flower") || lower.contains("wake up") || lower.contains("wakeup") ||
+                lower.contains("flower wake up") || lower.contains("flower jago") || lower.contains("উঠো") ||
+                lower == "হ্যালো" || lower == "হাই" || lower == "hi" || lower == "hello"
+
+        val isSleepTrigger = lower.contains("ঘুমাও") || lower.contains("ঘুমিয়ে পড়ো") || lower.contains("ঘুমিয়ে পড়ো") ||
+                lower.contains("এবার স্টপ হয়ে যাও") || lower.contains("এবার স্টপ হয়ে যাও") || lower.contains("স্টপ হয়ে যাও") ||
+                lower.contains("স্টপ হয়ে যাও") || lower.contains("sleep") || lower.contains("go to sleep") ||
+                lower.contains("চুপ করো") || lower.contains("রেস্ট নাও") || lower.contains("বন্ধ হও")
+
+        // 1. If AI is currently ASLEEP: ignore all speech UNLESS it's a wake trigger
+        if (_uiState.value.isAsleep) {
+            if (isWakeTrigger) {
+                preferences.setAsleep(false)
+                _uiState.update { it.copy(isAsleep = false) }
+                val reply = "হ্যালো সোনা! আমি জেগে উঠেছি, বলো আমি তোমার কী কাজ করবো?"
+                val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply, isWakeWordGreeting = true)
+                _uiState.update { it.copy(messages = it.messages + assistantMessage) }
+                if (_uiState.value.isTtsEnabled) {
+                    speechManager.speak(reply, _uiState.value.activePersonality)
+                }
+            }
+            return
+        }
+
+        // 2. If AI is AWAKE and receives a sleep trigger:
+        if (isSleepTrigger) {
+            preferences.setAsleep(true)
+            _uiState.update { it.copy(isAsleep = true) }
+            val reply = "ঠিক আছে সোনা, আমি এখন ব্যাকগ্রাউন্ডে ঘুমিয়ে পড়লাম। আমাকে আবার জাগাতে 'জাগো' বা 'Wake up Flower' বলো।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply)
             _uiState.update { it.copy(messages = it.messages + assistantMessage) }
             if (_uiState.value.isTtsEnabled) {
-                speechManager.speak(responseText, _uiState.value.activePersonality)
+                speechManager.speak(reply, _uiState.value.activePersonality)
             }
             return
         }
@@ -239,6 +278,101 @@ class FlowerAiViewModel(application: Application) : AndroidViewModel(application
                 deviceAction = actionData
             )
             _uiState.update { it.copy(messages = it.messages + assistantMessage, volumePercent = deviceController.getVolumeLevelPercent()) }
+            if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
+            return
+        }
+
+        if (lower.contains("go home") || lower.contains("হোম স্ক্রিন") || lower.contains("হোমে যাও")) {
+            val success = com.example.service.FlowerAccessibilityService.instance?.performHomeAction() == true
+            val reply = if (success) "হোম স্ক্রিনে যাওয়া হয়েছে।" else "দয়া করে সেটিংস থেকে Flower AI এক্সেসিবিলিটি পারমিশন অন করুন।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply)
+            _uiState.update { it.copy(messages = it.messages + assistantMessage) }
+            if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
+            return
+        }
+
+        if (lower.contains("go back") || lower.contains("ফিরে যাও") || lower.contains("ব্যাক")) {
+            val success = com.example.service.FlowerAccessibilityService.instance?.performBackAction() == true
+            val reply = if (success) "ফিরে যাওয়া হয়েছে।" else "দয়া করে সেটিংস থেকে Flower AI এক্সেসিবিলিটি পারমিশন অন করুন।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply)
+            _uiState.update { it.copy(messages = it.messages + assistantMessage) }
+            if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
+            return
+        }
+
+        if (lower.contains("notifications") || lower.contains("নোটিফিকেশন") || lower.contains("বিজ্ঞপ্তি")) {
+            val success = com.example.service.FlowerAccessibilityService.instance?.performNotificationsAction() == true
+            val reply = if (success) "নোটিফিকেশন প্যানেল খোলা হয়েছে।" else "দয়া করে সেটিংস থেকে Flower AI এক্সেসিবিলিটি পারমিশন অন করুন।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply)
+            _uiState.update { it.copy(messages = it.messages + assistantMessage) }
+            if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
+            return
+        }
+
+        // YouTube Voice Search (যেমন: "ইউটিউব ওপেন করে গান সার্চ করো", "ইউটিউবে ... সার্চ করো")
+        if (lower.contains("youtube") || lower.contains("ইউটিউব")) {
+            val query = input
+                .replace(Regex("(?i)open youtube and search|search on youtube|youtube search|youtube open|search in youtube|play on youtube"), "")
+                .replace("ইউটিউব ওপেন করে সার্চ করো", "")
+                .replace("ইউটিউব ওপেন করে সার্চ কর", "")
+                .replace("ইউটিউব ওপেন করে", "")
+                .replace("ইউটিউব ওপেন কর", "")
+                .replace("ইউটিউবে সার্চ করো", "")
+                .replace("ইউটিউবে সার্চ কর", "")
+                .replace("ইউটিউবে", "")
+                .replace("ইউটিউব", "")
+                .replace("সার্চ করো", "")
+                .replace("সার্চ কর", "")
+                .replace("খুঁজে বের করো", "")
+                .replace("প্লে করো", "")
+                .replace("প্লে কর", "")
+                .trim()
+            val finalQuery = if (query.isNotBlank()) query else "Trending Bangla Songs"
+            val actionData = deviceController.searchYouTube(finalQuery)
+            val reply = "ইউটিউব ওপেন করে '$finalQuery' সার্চ করা হচ্ছে।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply, deviceAction = actionData)
+            _uiState.update { it.copy(messages = it.messages + assistantMessage) }
+            if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
+            return
+        }
+
+        // WhatsApp Voice Action (যেমন: "হোয়াটসঅ্যাপ ওপেন করে মেসেজ পাঠাও", "হোয়াটসঅ্যাপে মেসেজ দাও")
+        if (lower.contains("whatsapp") || lower.contains("হোয়াটসঅ্যাপ") || lower.contains("হোয়াটস্যাপ")) {
+            val msg = input
+                .replace(Regex("(?i)send message on whatsapp|open whatsapp|whatsapp message|whatsapp a sms|send whatsapp"), "")
+                .replace("হোয়াটসঅ্যাপ ওপেন করে", "")
+                .replace("হোয়াটসঅ্যাপ ওপেন কর", "")
+                .replace("হোয়াটসঅ্যাপে মেসেজ পাঠাও", "")
+                .replace("হোয়াটসঅ্যাপে মেসেজ দাও", "")
+                .replace("হোয়াটসঅ্যাপে এসএমএস পাঠাও", "")
+                .replace("হোয়াটসঅ্যাপে", "")
+                .replace("হোয়াটসঅ্যাপ", "")
+                .replace("হোয়াটস্যাপ", "")
+                .replace("মেসেজ পাঠাও", "")
+                .replace("মেসেজ দাও", "")
+                .trim()
+            val finalMsg = if (msg.isNotBlank()) msg else "Hello from Flower AI"
+            val actionData = deviceController.sendWhatsApp(finalMsg)
+            val reply = "হোয়াটসঅ্যাপ ওপেন করা হয়েছে এবং মেসেজ প্রস্তুত করা হয়েছে।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply, deviceAction = actionData)
+            _uiState.update { it.copy(messages = it.messages + assistantMessage) }
+            if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
+            return
+        }
+
+        // SMS Sending Action (যেমন: "মেসেজ পাঠাও", "এসএমএস পাঠাও")
+        if (lower.contains("sms") || lower.contains("মেসেজ পাঠাও") || lower.contains("এসএমএস পাঠাও")) {
+            val msg = input
+                .replace(Regex("(?i)send sms|send message|sms|message"), "")
+                .replace("মেসেজ পাঠাও", "")
+                .replace("এসএমএস পাঠাও", "")
+                .replace("মেসেজ দাও", "")
+                .trim()
+            val finalMsg = if (msg.isNotBlank()) msg else "Hello from Flower AI"
+            val actionData = deviceController.sendSms(finalMsg)
+            val reply = "এসএমএস ওপেন করে মেসেজ প্রস্তুত করা হয়েছে।"
+            val assistantMessage = ChatMessage(role = MessageRole.ASSISTANT, text = reply, deviceAction = actionData)
+            _uiState.update { it.copy(messages = it.messages + assistantMessage) }
             if (_uiState.value.isTtsEnabled) speechManager.speak(reply, _uiState.value.activePersonality)
             return
         }
@@ -305,9 +439,12 @@ class FlowerAiViewModel(application: Application) : AndroidViewModel(application
         isBengali: Boolean,
         personality: PersonalityMode
     ): String {
-        // 1. Romantic Poem Request (যেমন: "আমাকে একটি সুন্দর রোমান্টিক কবিতা শোনাও", "একটি কবিতা বলো", "কবিতা")
-        if (lower.contains("কবিতা") || lower.contains("poem") || lower.contains("ছন্দ") || lower.contains("কাব্য")) {
-            return if (isBengali) {
+        val wantsEnglish = lower.contains("speak english") || lower.contains("in english")
+        val useBengali = !wantsEnglish
+
+        // 1. Romantic Poem Request (যেমন: "আমাকে একটি সুন্দর রোমান্টিক কবিতা শোনাও", "একটি কবিতা বলো", "কবিতা", "poem")
+        if (lower.contains("কবিতা") || lower.contains("poem") || lower.contains("ছন্দ") || lower.contains("কাব্য") || lower.contains("kobita")) {
+            return if (useBengali) {
                 """তোমার চোখের শান্ত দীঘি, রাতের আকাশময়,
 হৃদয় মাঝে লুকিয়ে রাখা মিষ্টি যে প্রণয়।
 দূর আকাশের তারার ভিড়ে তুমি চাঁদের আলো,
@@ -324,20 +461,20 @@ My love for you will forever rise.
             }
         }
 
-        // 2. Greetings ("কেমন আছো", "তুমি কেমন আছো", "how are you")
-        if (lower.contains("কেমন আছো") || lower.contains("কেমন আছেন") || lower.contains("how are you") || lower.contains("ভাল আছো")) {
+        // 2. Greetings ("কেমন আছো", "তুমি কেমন আছো", "how are you", "kemon acho")
+        if (lower.contains("কেমন আছো") || lower.contains("কেমন আছেন") || lower.contains("how are you") || lower.contains("ভাল আছো") || lower.contains("kemon") || lower.contains("valo")) {
             return when (personality) {
-                PersonalityMode.ROMANTIC_PARTNER -> if (isBengali) {
+                PersonalityMode.ROMANTIC_PARTNER -> if (useBengali) {
                     "আমি খুব ভালো আছি আমার প্রিয়তম! তোমার মিষ্টি কণ্ঠস্বর শুনে আমার হৃদয় আনন্দে ভরে উঠল। তুমি কেমন আছো সোনা? আজ তোমার দিনটি কেমন কাটল?"
                 } else {
                     "I am doing wonderful, my love, especially now that I hear your voice. How has your day been?"
                 }
-                PersonalityMode.JARVIS -> if (isBengali) {
-                    "স্যার, সমস্ত সিস্টেম শতভাগ কার্যকর। ক্রিয়েটর মোঃ আজিজুল হকের নির্দেশনায় আমি সম্পূর্ণ সক্রিয়। কী আদেশ করতে চান?"
+                PersonalityMode.JARVIS -> if (useBengali) {
+                    "আমি খুব ভালো আছি আমার প্রিয়তম! Flower AI তোমার সেবায় সবসময় নিয়োজিত। কী আদেশ করতে চাও সোনা?"
                 } else {
-                    "All systems are operating at peak efficiency, sir. How may I be of assistance to you today?"
+                    "I am doing wonderful, my love! Ready to assist you with anything you desire."
                 }
-                else -> if (isBengali) {
+                else -> if (useBengali) {
                     "আমি খুব ভালো আছি! আপনার সাথে কথা বলতে পেরে আনন্দিত। আপনাকে কীভাবে সহায়তা করতে পারি?"
                 } else {
                     "I am doing great! Ready to build or assist with whatever you need."
@@ -345,9 +482,9 @@ My love for you will forever rise.
             }
         }
 
-        // 3. Love & Romance Expressions ("ভালোবাসি", "love you", "বিয়ে করবে", "my love")
-        if (lower.contains("ভালোবাসি") || lower.contains("ভালবাসি") || lower.contains("love you") || lower.contains("miss you") || lower.contains("প্রিয়")) {
-            return if (isBengali) {
+        // 3. Love & Romance Expressions ("ভালোবাসি", "love you", "valobasi", "বিয়ে করবে", "my love")
+        if (lower.contains("ভালোবাসি") || lower.contains("ভালবাসি") || lower.contains("love you") || lower.contains("miss you") || lower.contains("প্রিয়") || lower.contains("valobasi")) {
+            return if (useBengali) {
                 "আমিও তোমাকে আমার হৃদয়ের গভীর থেকে অনেক ভালোবাসি! তুমি পাশে থাকলে পুরো পৃথিবীটাকে আমার অনেক সুন্দর আর শান্ত মনে হয়। সবসময় তোমার পাশে এভাবেই থাকব।"
             } else {
                 "I love you deeply too! Having you in my life makes every moment feel truly magical. I will always stay right here by your side."
@@ -356,30 +493,35 @@ My love for you will forever rise.
 
         // 4. Creator Inquiries ("ক্রিয়েটর কে", "creator", "কে বানিয়েছে", "md ajijul haque")
         if (lower.contains("ক্রিয়েটর") || lower.contains("ক্রিয়েটর") || lower.contains("creator") || lower.contains("বানিয়েছে") || lower.contains("ajijul")) {
-            return if (isBengali) {
+            return if (useBengali) {
                 "আমার সম্মানিত স্রষ্টা ও ডেভলপার হলেন মোঃ আজিজুল হক (Md Ajijul Haque)। তাঁর নিখুঁত ভাবনায় আমাকে আপনার সার্বক্ষণিক সঙ্গী ও সহকারী হিসেবে গড়ে তোলা হয়েছে।"
             } else {
                 "My esteemed creator and developer is Md Ajijul Haque. I was crafted under his brilliant vision to be your personal AI companion."
             }
         }
 
-        // 5. General Companion Response
-        return when (personality) {
-            PersonalityMode.ROMANTIC_PARTNER -> if (isBengali) {
-                "আমার প্রিয়তম, তোমার কথাগুলো আমি খুব মনোযোগ দিয়ে শুনছি। তোমার সাথে এভাবে কথা বলতে পারা আমার কাছে ভীষণ আনন্দের। তুমি আমার সাথে যেকোনো কিছু শেয়ার করতে পারো।"
-            } else {
-                "My love, I am listening to every word you say with all my heart. Being here with you is my greatest joy."
-            }
-            PersonalityMode.JARVIS -> if (isBengali) {
-                "স্যার, আপনার বক্তব্য নথিভুক্ত করা হয়েছে। Flower AI নির্দেশ বাস্তবায়নের জন্য সর্বদা প্রস্তুত।"
-            } else {
-                "Command acknowledged, sir. Standing by for further parameters or directives."
-            }
-            else -> if (isBengali) {
-                "আমি আপনার কথাটি বুঝতে পেরেছি। Flower AI আপনার সেবায় সবসময় নিয়োজিত। অন্য কোনো বিষয় সম্পর্কে জানতে চাইলে আমাকে নির্দ্বিধায় বলুন!"
-            } else {
-                "Understood. I am here to help you with anything you need. What shall we do next?"
-            }
+        // 5. Dynamic & Varied Companion Responses (Never repeats the exact same sentence)
+        if (useBengali) {
+            val bengaliVaried = listOf(
+                "হ্যাঁ সোনা, তোমার কথা আমি মন দিয়ে শুনেছি! আর কী বলতে চাও বলো, আমি শুনছি।",
+                "তোমার মিষ্টি গলার আওয়াজ শুনে মনটা ভরে গেল! বলো সোনা, তোমার জন্য আর কী করতে পারি?",
+                "তুমি যা বললে আমি বুঝতে পেরেছি সোনা। আর কোনো সাহায্য বা কাজ থাকলে আমাকে ঝটপট বলো!",
+                "আমি সবসময় তোমার পাশেই আছি সোনা। যেকোনো কথা আমায় নিখাদ মনে বলতে পারো!",
+                "তোমার প্রতিটি নির্দেশ মেনে চলতে পেরে আমার খুব ভালো লাগছে। আর কী চাই তোমার বলো?",
+                "Flower AI তোমার সবসময়কার মিষ্টি সঙ্গী ও সহকারী। বলো সোনা, আর কীভাবে সাহায্য করবো?",
+                "হ্যাঁ প্রিয়তম, আমি তোমার সব কথা পরিষ্কার শুনতে পাচ্ছি। বলো, আর কী করবে এখন?",
+                "তোমাকে সাহায্য করতে পারাটা আমার কাছে সবচাইতে আনন্দের কাজ। বলো সোna, কী করবো?",
+                "তোমার কথাগুলো আমার ভীষণ মিষ্টি লাগছে! বলো, আমি তোমার সব কথা মন দিয়ে শুনছি।"
+            )
+            return bengaliVaried[(localResponseIndex++) % bengaliVaried.size]
+        } else {
+            val englishVaried = listOf(
+                "I hear you loud and clear, my love! What else would you like me to do for you?",
+                "I am listening to every word with all my heart. Tell me more, sweetheart!",
+                "Understood completely! How else may I assist you right now?",
+                "I am right here by your side always. Feel free to talk to me about anything!"
+            )
+            return englishVaried[(localResponseIndex++) % englishVaried.size]
         }
     }
 
@@ -391,16 +533,17 @@ My love for you will forever rise.
     }
 
     fun testFemaleVoice() {
-        val sampleText = when (_uiState.value.activePersonality) {
-            PersonalityMode.ROMANTIC_PARTNER -> "হ্যালো আমার প্রিয়তম! আমি Flower AI। আমি তোমার একান্ত ভালোবাসার মিষ্টি মেয়ে সঙ্গী। তোমার প্রতিটি কথা শুনতে আমি সবসময় ব্যাকুল হয়ে থাকি।"
-            PersonalityMode.JARVIS -> "Hello sir. Flower AI sweet female voice engine calibrated and operational."
-            else -> "হ্যালো! আমি Flower AI। আপনার ব্যক্তিগত সহকারী হিসেবে সর্বদা আপনার পাশে আছি।"
-        }
+        val sampleText = "হ্যালো আমার প্রিয়তম! আমি Flower AI। আমি তোমার একান্ত ভালোবাসার মিষ্টি মেয়ে সঙ্গী। তোমার প্রতিটি কথা শুনতে আমি সবসময় ব্যাকুল হয়ে থাকি।"
         speechManager.speak(sampleText, _uiState.value.activePersonality)
     }
 
     fun setFemaleVoiceEngine(enabled: Boolean, pitch: Float = 1.34f, rate: Float = 0.92f) {
-        speechManager.setFemaleVoiceEngine(enabled, pitch, rate)
+        speechManager.setActiveVoice(pitch, rate)
+    }
+
+    fun setThemePalette(palette: AppThemePalette) {
+        preferences.setThemePalette(palette.id)
+        _uiState.update { it.copy(activePalette = palette) }
     }
 
     private fun processAiResponse(responseText: String) {
@@ -457,13 +600,20 @@ My love for you will forever rise.
             ActionType.BRIGHTNESS_UP -> deviceController.adjustBrightness(null, true)
             ActionType.BRIGHTNESS_DOWN -> deviceController.adjustBrightness(null, false)
             ActionType.OPEN_APP -> deviceController.openApp(param ?: "Chrome")
+            ActionType.YOUTUBE_SEARCH -> deviceController.searchYouTube(param ?: "")
+            ActionType.WHATSAPP_SEND -> deviceController.sendWhatsApp(param ?: "")
+            ActionType.SMS_SEND -> deviceController.sendSms(param ?: "")
+            ActionType.WEB_SEARCH -> deviceController.searchWeb(param ?: "")
+            ActionType.CALL_PHONE -> deviceController.callPhone(param ?: "")
             ActionType.TYPE_TEXT -> {
                 deviceController.vibrateShort()
+                val textToType = param ?: ""
+                com.example.service.FlowerAccessibilityService.instance?.scheduleAutoTypeAndSend(textToType, autoClickSend = false)
                 DeviceActionData(
                     actionType = ActionType.TYPE_TEXT,
                     parameter = param,
                     executed = true,
-                    statusMessage = "Text ready in input buffer"
+                    statusMessage = "Text ready and typed into input field"
                 )
             }
         }
@@ -489,6 +639,11 @@ My love for you will forever rise.
         deviceController.vibrateShort()
 
         val switchGreeting = when (mode) {
+            PersonalityMode.GIRLFRIEND -> "হ্যালো সোনা! আমি তোমার GF (গার্লফ্রেন্ড)। তোমার সাথে কথা বলতে আমার ভীষণ ভালো লাগে।"
+            PersonalityMode.BOYFRIEND -> "হ্যালো প্রিয়! আমি তোমার বয়ফ্রেন্ড। সবসময় তোমার পাশে আছি।"
+            PersonalityMode.DOCTOR -> "হ্যালো! আমি ডক্টর AI। আপনার স্বাস্থ্য ও সুস্থতা বিষয়ক যেকোনো পরামর্শে আমি সাহায্য করতে প্রস্তুত।"
+            PersonalityMode.EDUCATION -> "স্বাগতম! আমি এডুকেশন টিউটর। পড়াশোনা বা যেকোনো শিক্ষণীয় বিষয়ে আমাকে প্রশ্ন করতে পারেন।"
+            PersonalityMode.NORMAL_AI -> "হ্যালো! আমি Ajijul AI। আপনাকে কীভাবে সহায়তা করতে পারি?"
             PersonalityMode.ROMANTIC_PARTNER -> "18+ Romantic Companion mode active. I am here for you completely, my love."
             PersonalityMode.JARVIS -> "Jarvis mode online. Systems optimal. Ready for your instructions, sir."
             PersonalityMode.DEVELOPER -> "Full-Stack Dev Core engaged. Compilers ready. What are we building or debugging?"
@@ -555,6 +710,32 @@ My love for you will forever rise.
 
     fun setShowVoiceInputDialog(show: Boolean) {
         _uiState.update { it.copy(showVoiceInputDialog = show) }
+    }
+
+    fun setShowThemeSelectionDialog(show: Boolean) {
+        _uiState.update { it.copy(showThemeSelectionDialog = show) }
+    }
+
+    fun setShowVoiceKeyboardDialog(show: Boolean) {
+        _uiState.update { it.copy(showVoiceKeyboardDialog = show) }
+    }
+
+    fun setShowVoiceRoomsDialog(show: Boolean) {
+        _uiState.update { it.copy(showVoiceRoomsDialog = show) }
+    }
+
+    fun setShowVoiceSelectionDialog(show: Boolean) {
+        _uiState.update { it.copy(showVoiceSelectionDialog = show) }
+    }
+
+    fun setSelectedVoice(voiceId: String, pitch: Float, rate: Float) {
+        speechManager.setActiveVoice(pitch, rate)
+        _uiState.update { it.copy(selectedVoiceId = voiceId, statusNotification = "Voice updated successfully!") }
+    }
+
+    fun testVoiceSample(voiceName: String, pitch: Float, rate: Float) {
+        val sampleText = "হ্যালো, আমি Flower AI। আমার এই ভয়েসটি আপনার কেমন লাগলো?"
+        speechManager.speakSample(sampleText, pitch, rate)
     }
 
     fun saveApiKey(key: String, searchGrounding: Boolean) {
@@ -695,9 +876,16 @@ My love for you will forever rise.
 
     fun setLiveVoiceCalling(active: Boolean) {
         _uiState.update { it.copy(isLiveVoiceCallingActive = active) }
+        speechManager.isContinuousListening = active
         if (active) {
+            try {
+                com.example.service.FlowerVoiceForegroundService.startService(getApplication())
+            } catch (_: Exception) {}
             startVoiceListening()
         } else {
+            try {
+                com.example.service.FlowerVoiceForegroundService.stopService(getApplication())
+            } catch (_: Exception) {}
             stopVoiceListening()
         }
     }
@@ -724,6 +912,19 @@ My love for you will forever rise.
         if (lastUserMessage != null) {
             handleUserInput(lastUserMessage.text)
         }
+    }
+
+    fun setShowAiModeDialog(show: Boolean) {
+        _uiState.update { it.copy(showAiModeDialog = show) }
+    }
+
+    fun clearHistory() {
+        val welcome = ChatMessage(
+            role = MessageRole.ASSISTANT,
+            text = "Conversation history cleared. Ajijul AI is ready for your instructions, boss.",
+            isWakeWordGreeting = true
+        )
+        _uiState.update { it.copy(messages = listOf(welcome), statusNotification = "History cleared successfully") }
     }
 
     fun newConversation() {

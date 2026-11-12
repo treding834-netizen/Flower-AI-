@@ -8,7 +8,12 @@ enum class ActionType(val tag: String, val displayName: String, val iconName: St
     BRIGHTNESS_UP("BRIGHTNESS_UP", "Brightness Boosted", "BrightnessHigh"),
     BRIGHTNESS_DOWN("BRIGHTNESS_DOWN", "Brightness Dimmed", "BrightnessLow"),
     OPEN_APP("OPEN_APP", "Opened Application", "Apps"),
-    TYPE_TEXT("TYPE_TEXT", "Text Copied to Input", "Keyboard");
+    TYPE_TEXT("TYPE_TEXT", "Text Copied to Input", "Keyboard"),
+    YOUTUBE_SEARCH("YOUTUBE_SEARCH", "YouTube Search", "PlayArrow"),
+    WHATSAPP_SEND("WHATSAPP_SEND", "WhatsApp Message", "Send"),
+    SMS_SEND("SMS_SEND", "SMS Sent", "Email"),
+    WEB_SEARCH("WEB_SEARCH", "Web Search", "Search"),
+    CALL_PHONE("CALL_PHONE", "Phone Call", "Phone");
 
     companion object {
         fun fromTag(tag: String): ActionType? {

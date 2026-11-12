@@ -20,6 +20,24 @@ class FlowerPreferences(context: Context) {
         private const val KEY_MEMORIES = "flower_memories_json"
         private const val KEY_FIRST_SETUP_DONE = "flower_first_setup_done"
         private const val KEY_USER_NAME = "flower_user_name"
+        private const val KEY_THEME_PALETTE = "flower_theme_palette"
+        private const val KEY_IS_ASLEEP = "flower_is_asleep"
+    }
+
+    fun isAsleep(): Boolean {
+        return prefs.getBoolean(KEY_IS_ASLEEP, false)
+    }
+
+    fun setAsleep(asleep: Boolean) {
+        prefs.edit().putBoolean(KEY_IS_ASLEEP, asleep).apply()
+    }
+
+    fun getThemePalette(): String {
+        return prefs.getString(KEY_THEME_PALETTE, "pink") ?: "pink"
+    }
+
+    fun setThemePalette(paletteId: String) {
+        prefs.edit().putString(KEY_THEME_PALETTE, paletteId).apply()
     }
 
     fun getApiKey(): String {

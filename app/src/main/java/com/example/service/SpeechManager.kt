@@ -54,14 +54,30 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
                 }
                 override fun onDone(utteranceId: String?) {
                     _isSpeaking.value = false
+                    if (isContinuousListening) {
+                        mainHandler.postDelayed({
+                            if (isContinuousListening && !_isSpeaking.value) {
+                                startListening()
+                            }
+                        }, 250)
+                    }
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     _isSpeaking.value = false
+                    if (isContinuousListening) {
+                        mainHandler.postDelayed({
+                            if (isContinuousListening && !_isSpeaking.value) {
+                                startListening()
+                            }
+                        }, 400)
+                    }
                 }
             })
         }
     }
+
+    var isContinuousListening: Boolean = false
 
     fun startListening() {
         mainHandler.post {
@@ -95,18 +111,27 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
                         }
                         override fun onError(error: Int) {
                             _isListening.value = false
-                            val errorMsg = when (error) {
-                                SpeechRecognizer.ERROR_AUDIO -> "Audio recording issue"
-                                SpeechRecognizer.ERROR_CLIENT -> "Voice client issue"
-                                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
-                                SpeechRecognizer.ERROR_NETWORK -> "Network required for speech"
-                                SpeechRecognizer.ERROR_NO_MATCH -> "No voice detected. Tap to speak again."
-                                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Voice recognizer is busy"
-                                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Voice timeout. Tap to speak again."
-                                else -> "Speech notice ($error)"
-                            }
-                            if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                                onError?.invoke(errorMsg)
+                            if (isContinuousListening && !_isSpeaking.value) {
+                                // Auto-rearm immediately in live voice mode so it never mutes
+                                mainHandler.postDelayed({
+                                    if (isContinuousListening && !_isSpeaking.value) {
+                                        startListening()
+                                    }
+                                }, 300)
+                            } else {
+                                val errorMsg = when (error) {
+                                    SpeechRecognizer.ERROR_AUDIO -> "Audio recording issue"
+                                    SpeechRecognizer.ERROR_CLIENT -> "Voice client issue"
+                                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+                                    SpeechRecognizer.ERROR_NETWORK -> "Network required for speech"
+                                    SpeechRecognizer.ERROR_NO_MATCH -> "No voice detected. Tap to speak again."
+                                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Voice recognizer is busy"
+                                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Voice timeout. Tap to speak again."
+                                    else -> "Speech notice ($error)"
+                                }
+                                if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                                    onError?.invoke(errorMsg)
+                                }
                             }
                         }
                         override fun onResults(results: Bundle?) {
@@ -116,6 +141,12 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
                             if (!text.isNullOrBlank()) {
                                 _lastRecognizedText.value = text
                                 onSpeechResult?.invoke(text)
+                            } else if (isContinuousListening && !_isSpeaking.value) {
+                                mainHandler.postDelayed({
+                                    if (isContinuousListening && !_isSpeaking.value) {
+                                        startListening()
+                                    }
+                                }, 300)
                             }
                         }
                         override fun onPartialResults(partialResults: Bundle?) {
@@ -132,15 +163,20 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-                    // Multi-language support: Bengali, English, Hindi, Arabic
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
-                    putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("bn-BD", "bn-IN", "en-US", "hi-IN", "ar", "ja"))
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+                    // High-accuracy Bengali recognition with multilingual support
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD")
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "bn-BD")
+                    putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("bn-BD", "bn-IN", "en-US", "hi-IN", "ar"))
                 }
                 speechRecognizer?.startListening(intent)
             } catch (e: Exception) {
                 _isListening.value = false
-                onError?.invoke("Speech listener error: ${e.localizedMessage}")
+                if (isContinuousListening) {
+                    mainHandler.postDelayed({ if (isContinuousListening && !_isSpeaking.value) startListening() }, 500)
+                } else {
+                    onError?.invoke("Speech listener error: ${e.localizedMessage}")
+                }
             }
         }
     }
@@ -161,15 +197,23 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
         }
     }
 
-    // Sweet Female Voice Engine configuration
-    var isFemaleVoiceEnabled: Boolean = true
-    var femaleVoicePitch: Float = 1.34f // Sweet, soft feminine frequency
-    var femaleVoiceRate: Float = 0.92f  // Gentle, warm companion cadence
+    // Active voice selection configuration
+    var activeVoicePitch: Float = 1.34f
+    var activeVoiceRate: Float = 0.92f
 
-    fun setFemaleVoiceEngine(enabled: Boolean, pitch: Float = 1.34f, rate: Float = 0.92f) {
-        isFemaleVoiceEnabled = enabled
-        femaleVoicePitch = pitch
-        femaleVoiceRate = rate
+    fun setActiveVoice(pitch: Float, rate: Float) {
+        activeVoicePitch = pitch
+        activeVoiceRate = rate
+    }
+
+    fun speakSample(text: String, pitch: Float, rate: Float) {
+        if (!isTtsInitialized || textToSpeech == null) return
+        try {
+            applySweetFemaleVoice(Locale.forLanguageTag("bn-BD"))
+            textToSpeech?.setPitch(pitch.coerceAtLeast(1.32f))
+            textToSpeech?.setSpeechRate(rate)
+            textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "sample_${System.currentTimeMillis()}")
+        } catch (_: Exception) {}
     }
 
     private fun applySweetFemaleVoice(locale: Locale) {
@@ -178,17 +222,22 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
             val voices = tts.voices
             if (!voices.isNullOrEmpty()) {
                 val matchingVoices = voices.filter { it.locale.language == locale.language }
-                val femaleVoice = matchingVoices.firstOrNull { voice ->
+                // Strictly exclude any voice containing 'male', 'man', 'guy', 'david', 'george', 'adam'
+                val femaleVoices = matchingVoices.filter { voice ->
+                    val name = voice.name.lowercase()
+                    !name.contains("male") && !name.contains("man") && !name.contains("guy") &&
+                    !name.contains("david") && !name.contains("george") && !name.contains("adam")
+                }
+                val chosenVoice = femaleVoices.firstOrNull { voice ->
                     val name = voice.name.lowercase()
                     name.contains("female") || name.contains("#female") || name.contains("fem") ||
                     name.contains("ban") || name.contains("sfg") || name.contains("iol") ||
+                    name.contains("zira") ||
                     voice.features?.any { it.contains("female", ignoreCase = true) } == true
-                } ?: matchingVoices.firstOrNull { voice ->
-                    !voice.name.lowercase().contains("male")
-                } ?: matchingVoices.firstOrNull()
+                } ?: femaleVoices.firstOrNull()
 
-                if (femaleVoice != null) {
-                    tts.voice = femaleVoice
+                if (chosenVoice != null) {
+                    tts.voice = chosenVoice
                 }
             }
         } catch (_: Exception) {}
@@ -229,31 +278,15 @@ class SpeechManager(private val context: Context) : TextToSpeech.OnInitListener 
             }
         } catch (_: Exception) {}
 
-        // Apply Sweet Female Voice selection
-        if (isFemaleVoiceEnabled) {
-            applySweetFemaleVoice(targetLocale)
-        }
+        // Enforce sweet female voice for this locale
+        applySweetFemaleVoice(targetLocale)
 
-        // Configure tone and pitch for sweet, realistic female companion
-        if (isFemaleVoiceEnabled) {
-            when (personality) {
-                PersonalityMode.ROMANTIC_PARTNER -> {
-                    textToSpeech?.setPitch(femaleVoicePitch) // 1.34f for sweet, soft romantic female voice
-                    textToSpeech?.setSpeechRate(femaleVoiceRate) // 0.92f for affectionate, gentle speed
-                }
-                PersonalityMode.JARVIS -> {
-                    textToSpeech?.setPitch(1.20f) // Crisp, smart female executive voice
-                    textToSpeech?.setSpeechRate(1.02f)
-                }
-                PersonalityMode.DEVELOPER, PersonalityMode.WEBSITE_BUILDER -> {
-                    textToSpeech?.setPitch(1.25f) // Confident, clear female developer voice
-                    textToSpeech?.setSpeechRate(0.98f)
-                }
-            }
-        } else {
-            textToSpeech?.setPitch(1.0f)
-            textToSpeech?.setSpeechRate(1.0f)
-        }
+        // Apply sweet female voice pitch (strictly minimum 1.32f feminine formant)
+        try {
+            val femalePitch = activeVoicePitch.coerceAtLeast(1.32f)
+            textToSpeech?.setPitch(femalePitch)
+            textToSpeech?.setSpeechRate(activeVoiceRate)
+        } catch (_: Exception) {}
 
         val utteranceId = "flower_${System.currentTimeMillis()}"
         _isSpeaking.value = true
